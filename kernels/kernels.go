@@ -112,3 +112,45 @@ func GaussianBlurKernel(kernelSize int, sigma float64) imgmod.Kernel {
 		},
 	}
 }
+
+func LaplacianKernel() imgmod.Kernel {
+	return imgmod.Kernel{
+		// This is for a 3x3 kernel with these values
+		// 0   1  0
+		// 1 -4  1
+		// 0  1  0
+		KernelValues: [][]float64{{0, 1, 0}, {1, -4, 1}, {0, 1, 0}},
+		// The kernel function gets applied to all pixels in the images and expects an color for that pixel back
+		KernelFunction: func(x, y int, k imgmod.Kernel, img *image.RGBA) color.RGBA {
+			var sum float64
+
+			// Here we loop through the kernel so that the pixel (x,y) is in the center of the kernel
+			for i := -1; i <= 1; i++ {
+				for j := -1; j <= 1; j++ {
+					nx, ny := x+i, y+j
+					// Bounds check
+					if nx < 0 || nx >= img.Bounds().Dx() || ny < 0 || ny >= img.Bounds().Dy() {
+						continue
+					}
+
+					r, g, b, _ := img.At(nx, ny).RGBA()
+					// Converting to black and white
+					bw := (r + g + b) / 3
+					// Multiply the pixel by the kernel value
+					kernelValue := k.KernelValues[j+1][i+1]
+					// Add it to the running sum for the pixel
+					sum += float64(bw>>8) * kernelValue
+				}
+			}
+
+			// Return the color for pixel (x,y)
+			return color.RGBA{
+				R: uint8(sum),
+				G: uint8(sum),
+				B: uint8(sum),
+				A: uint8(255),
+			}
+		},
+	}
+
+}
