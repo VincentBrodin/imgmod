@@ -7,6 +7,7 @@ import (
 	"image/draw"
 	"image/jpeg"
 	"image/png"
+	"math"
 	"os"
 )
 
@@ -80,6 +81,97 @@ func SaveImage(img image.Image, imagePath string) error {
 	}
 
 	return err
+}
+
+// Scaling
+func DownScale(img image.Image, newWidth, newHeight int, keepAspectRation bool) image.Image {
+	bounds := img.Bounds()
+	ogWidth := float64(bounds.Dx())
+	ogHeight := float64(bounds.Dy())
+	scale := math.Min(float64(newHeight)/ogWidth, float64(newHeight)/ogHeight)
+
+	if scale > 1 {
+		return img
+	}
+
+	if keepAspectRation {
+		newWidth = int(ogWidth * scale)
+		newHeight = int(ogHeight * scale)
+	}
+
+	output := image.NewRGBA(image.Rect(0, 0, newWidth, newHeight))
+
+	for y := 0; y < newHeight; y++ {
+		for x := 0; x < newWidth; x++ {
+			xPoint := int(math.Floor(float64(x) / scale))
+			yPoint := int(math.Floor(float64(y) / scale))
+			output.Set(x, y, img.At(xPoint, yPoint))
+		}
+	}
+
+	return output
+}
+
+func UpScale(img image.Image, newWidth, newHeight int, keepAspectRation bool) image.Image {
+	bounds := img.Bounds()
+	ogWidth := float64(bounds.Dx())
+	ogHeight := float64(bounds.Dy())
+	scale := math.Min(float64(newHeight)/ogWidth, float64(newHeight)/ogHeight)
+	fmt.Println(scale)
+
+	if scale < 1 {
+		return img
+	}
+
+	if keepAspectRation {
+		newWidth = int(ogWidth * scale)
+		newHeight = int(ogHeight * scale)
+	}
+
+	output := image.NewRGBA(image.Rect(0, 0, newWidth, newHeight))
+
+	for y := 0; y < newHeight; y++ {
+		for x := 0; x < newWidth; x++ {
+			xPoint := int(math.Floor(float64(x) / scale))
+			yPoint := int(math.Floor(float64(y) / scale))
+			output.Set(x, y, img.At(xPoint, yPoint))
+		}
+	}
+
+	return output
+
+}
+
+// Sums all the RGBA colors in the given range
+func sumRGBA(img *image.Image, fromX, toX, fromY, toY int) color.RGBA {
+	var rSum, gSum, bSum, aSum uint32
+	pixelCount := 0
+
+	for i := fromY; i <= toY; i++ {
+		for j := fromX; j <= toX; j++ {
+			r, g, b, a := (*img).At(j, i).RGBA()
+			rSum += r
+			gSum += g
+			bSum += b
+			aSum += a
+			pixelCount++
+		}
+	}
+
+	var c color.RGBA
+
+	if pixelCount > 0 {
+		c = color.RGBA{
+			R: uint8(rSum / uint32(pixelCount) >> 8), // Right shift to get 8-bit values
+			G: uint8(gSum / uint32(pixelCount) >> 8),
+			B: uint8(bSum / uint32(pixelCount) >> 8),
+			A: uint8(aSum / uint32(pixelCount) >> 8),
+		}
+	} else {
+		c = color.RGBA{0, 0, 0, 255}
+	}
+
+	return c
 }
 
 // Checks that the given extension can be encoded
